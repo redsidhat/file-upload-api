@@ -1,8 +1,10 @@
-from flask import Flask
+from flask import Flask, request, redirect, url_for
+from werkzeug.utils import secure_filename
 import sys
 import MySQLdb
+import os
 app = Flask(__name__)
-
+UPLOAD_FOLDER = 'uploads'
 
 def initiate_db_connection():
     try:
@@ -55,11 +57,32 @@ def check_db_status():
 
 def initiate():
     check_db_status()
-    app.run(host='0.0.0.0', port=80, debug=True)
+    app.run(
+        host='0.0.0.0', 
+        port=80, 
+        debug=True
+        )
+
+
 
 @app.route('/')
 def index():
     return "Your file upload solution!"
+
+
+@app.route('/upload', methods=['POST'])
+def upload():
+    file = request.files['files']
+    # Make the filename safe, remove unsupported chars
+    filename = secure_filename(file.filename)
+    #writting the uploaded file
+    try:
+        file.save(os.path.join(UPLOAD_FOLDER, filename))
+        return 'File upload success'
+    except file as err:
+        return 'File upload failed %s' %str(err), 500
+    #return redirect(url_for('uploaded_file',
+     #                       filename=filename))
 
 if __name__ == '__main__':
     initiate()
