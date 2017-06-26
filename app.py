@@ -57,8 +57,15 @@ def check_db_status():
     #Closing mysql connection
     close_db_connection(connector)
 
+def check_directories():
+    if not os.path.exists(TEMP_UPLOAD_FOLDER):
+        os.makedirs(TEMP_UPLOAD_FOLDER)
+    if not os.path.exists(UPLOAD_FOLDER):
+        os.makedirs(UPLOAD_FOLDER)
+
 def initiate():
     check_db_status()
+    check_directories()
     app.run(
         host='0.0.0.0', 
         port=80, 
@@ -68,9 +75,11 @@ def initiate():
 def md5(fname):
     hash_md5 = hashlib.md5()
     with open(fname, "rb") as f:
+        #Incase if the file is too big
         for chunk in iter(lambda: f.read(4096), b""):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
+
 def update_metadata(filename, checksum):
     temp_file_path = TEMP_UPLOAD_FOLDER+"/"+filename
     file_path = UPLOAD_FOLDER+"/"+filename
