@@ -106,6 +106,7 @@ def update_metadata(filename, checksum):
                 return False
             query = 'INSERT INTO files.files_metadata (fileName, checksum, location) VALUES ("%s", "%s", "%s");' %(filename, checksum, file_path)
             response = db_execute(connector, query)
+            close_db_connection(connector)
             return True
         else:
             #same file with different names.
@@ -115,14 +116,16 @@ def update_metadata(filename, checksum):
             response = db_execute(connector, query, True)
             for row in response:
                 file_path = row[0]
-                query = 'INSERT INTO files.files_metadata (fileName, checksum, location) VALUES ("%s", "%s", "%s");' %(filename, checksum, file_path)
-                response = db_execute(connector, query)
-                return True
+            query = 'INSERT INTO files.files_metadata (fileName, checksum, location) VALUES ("%s", "%s", "%s");' %(filename, checksum, file_path)
+            response = db_execute(connector, query)
+            close_db_connection(connector)
+            return True
     else:
         print "filename already exist"
         #removing temporary file
         os.remove(temp_file_path)
         return False
+
 @app.route('/')
 def index():
     return "Your file upload solution!"
