@@ -3,7 +3,9 @@ from werkzeug.utils import secure_filename
 import sys
 import MySQLdb
 import os
+import hashlib
 app = Flask(__name__)
+TEMP_UPLOAD_FOLDER = 'temp_uploads'
 UPLOAD_FOLDER = 'uploads'
 
 def initiate_db_connection():
@@ -63,8 +65,55 @@ def initiate():
         debug=True
         )
 
-
-
+def md5(fname):
+    hash_md5 = hashlib.md5()
+    with open(fname, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_md5.update(chunk)
+    return hash_md5.hexdigest()
+def update_metadata(filename, checksum):
+    temp_file_path = TEMP_UPLOAD_FOLDER+"/"+filename
+    file_path = UPLOAD_FOLDER+"/"+filename
+    #check if file name is duplicate.
+    query = "SELECT COUNT(*) from files.files_metadata WHERE filename = '%s';" %filename
+    connector = initiate_db_connection()
+    response = db_execute(connector, query, True)
+    for row in response:
+        file_name_exist = row[0]
+    if file_name_exist == 0:
+        #file name doesn't exist in the db. 
+        #checking if the md5sum exist
+        query = "SELECT COUNT(*) from files.files_metadata WHERE checksum = '%s';" %checksum
+        response = db_execute(connector, query, True)
+        for row in response:
+            checksum_exist = row[0]
+        if checksum_exist == 0:
+            #checksum doesn't exist
+            #moving file from temp path to actualy path.
+            try:
+                os.rename(temp_file_path, file_path)
+            except:
+                print "file mving to uploads directory failed"
+                return False
+            query = 'INSERT INTO files.files_metadata (fileName, checksum, location) VALUES ("%s", "%s", "%s");' %(filename, checksum, file_path)
+            response = db_execute(connector, query)
+            return True
+        else:
+            #same file with different names.
+            print "removing temp file and inserting entry to databse"
+            os.remove(temp_file_path)
+            query = "SELECT location from files.files_metadata WHERE checksum = '%s';" %checksum
+            response = db_execute(connector, query, True)
+            for row in response:
+                file_path = row[0]
+                query = 'INSERT INTO files.files_metadata (fileName, checksum, location) VALUES ("%s", "%s", "%s");' %(filename, checksum, file_path)
+                response = db_execute(connector, query)
+                return True
+    else:
+        print "filename already exist"
+        #removing temporary file
+        os.remove(temp_file_path)
+        return False
 @app.route('/')
 def index():
     return "Your file upload solution!"
@@ -77,12 +126,18 @@ def upload():
     filename = secure_filename(file.filename)
     #writting the uploaded file
     try:
-        file.save(os.path.join(UPLOAD_FOLDER, filename))
-        return 'File upload success'
+        file.save(os.path.join(TEMP_UPLOAD_FOLDER, filename))
     except file as err:
         return 'File upload failed %s' %str(err), 500
-    #return redirect(url_for('uploaded_file',
-     #                       filename=filename))
+
+
+    temp_file_path = TEMP_UPLOAD_FOLDER+"/"+filename
+    checksum = md5(temp_file_path)
+    upload_status = update_metadata(filename, checksum)
+    if upload_status:
+        return 'Success', 200
+    else:
+        return 'Failed due to conflict in filename', 409
 
 if __name__ == '__main__':
     initiate()
