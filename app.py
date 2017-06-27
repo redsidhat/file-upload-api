@@ -1,4 +1,4 @@
-from flask import Flask, request, redirect, url_for
+from flask import Flask, request, redirect, url_for, send_from_directory
 from werkzeug.utils import secure_filename
 import sys
 import MySQLdb
@@ -126,12 +126,37 @@ def update_metadata(filename, checksum):
         os.remove(temp_file_path)
         return False
 
+def get_file_path(filename):
+    file_path = None
+    query = "SELECT location from files.files_metadata WHERE fileName = '%s';" %filename
+    connector = initiate_db_connection()
+    response = db_execute(connector, query, True)
+    close_db_connection(connector)
+    for row in response:
+        file_path = row[0]
+    if file_path == None:
+        return False
+    return file_path    
+
+def delete_file(filename, file_path):
+    #removing file from disk
+    try:
+        os.remove(file_path)
+        #file removing from database
+        query = "DELETE from files.files_metadata WHERE fileName = '%s';" %filename
+        connector = initiate_db_connection()
+        response = db_execute(connector, query)
+        close_db_connection(connector)
+        return True
+    except:
+        return False
+
 @app.route('/')
 def index():
     return "Your file upload solution!"
 
 
-@app.route('/upload', methods=['POST'])
+@app.route('/uploads', methods=['POST'])
 def upload():
     file = request.files['files']
     # Make the filename safe, remove unsupported chars
@@ -150,6 +175,29 @@ def upload():
         return 'Success', 200
     else:
         return 'Failed due to conflict in filename', 409
+
+@app.route('/uploads/<path:filename>', methods=['GET'])
+def download(filename):
+    file_path = get_file_path(filename)
+    if not file_path:
+        return "File not found."
+    print file_path
+    return send_from_directory(directory='', filename=file_path)
+
+@app.route('/delete/<path:filename>')
+def delete(filename):
+    file_path = get_file_path(filename)
+    if not file_path:
+        return "File not found."
+    if delete_file(filename, file_path):
+        return "File Deleted successfully"
+    else:
+        return "File Delete failed", 500
+
+
+
+
+
 
 if __name__ == '__main__':
     initiate()
