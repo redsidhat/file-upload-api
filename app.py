@@ -195,9 +195,5 @@ def delete(filename):
         return "File Delete failed", 500
 
 
-
-
-
-
 if __name__ == '__main__':
     initiate()
