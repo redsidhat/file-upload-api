@@ -22,7 +22,7 @@ This is a simple file uploading API written in python flask. It does the followi
 ```
 
 This api also:
-  - Reuse the contents somehow to save space if multiple files have similar contents.
+  - Reuse the contents to save space if multiple files have similar contents.
   - This convert unsafe filename characters to _
 
 
@@ -51,9 +51,11 @@ The app will take care of checking/creating database and tables everytime it ini
 ##### Extra modules used:
 - Flask
 - MySQLdb
+
+
 You may install these using pip
 Once the installation is done. Run the app using following command.
 ```sh
 python app.py
 ```
-App runs on port 80 and thus it require root.
+App runs on port 80 and thus it requires root.
