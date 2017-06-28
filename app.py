@@ -5,6 +5,7 @@ import MySQLdb
 import os
 import hashlib
 app = Flask(__name__)
+
 TEMP_UPLOAD_FOLDER = 'temp_uploads'
 UPLOAD_FOLDER = 'uploads'
 
